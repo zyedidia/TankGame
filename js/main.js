@@ -7,26 +7,28 @@ var h = $("#canvas").height(); // Height
 
 var images = [];
 var sprites = [];
-var updateTime = 1000 / 60;
+var updateTime = 1000 / 80;
 
 var lastTime = 0;
-
 
 init();
 
 start();
 
 function setupWorld() {
-	world = new b2World(new b2Vec2(0, 10), true);
+	world = new b2World(new b2Vec2(0, 0), true);
 
 	var image = new CanvasImage(images[0], ctx);
-	var sprite = new Sprite(image, world, 9, 15);
-	sprites.push(sprite);
+	var tank = new Tank(image, world, 9, 15);
+	sprites.push(tank);
+
+	var image2 = new CanvasImage(images[2], ctx);
+	var obstacle = new Obstacle(image2, world, 20, 20, 10, 2, 2);
+	sprites.push(obstacle);
 
 	var fixDef = new b2FixtureDef;
 	fixDef.density = 1.0;
 	fixDef.friction = 0.5;
-	fixDef.restitution = 0.2;
 	var bodyDef = new b2BodyDef;
 
 	//create ground
@@ -49,7 +51,9 @@ function setupWorld() {
 
 function init() {
 	loadImage("img/greenTank.png");
-	
+	loadImage("img/brownTank.png");
+	loadImage("img/obstacle.png");
+
 	setupWorld();
 }
 
@@ -60,10 +64,12 @@ function start() {
 function run(time) {
 	var now = Date.now();
 	var delta = now - lastTime;
-	update(delta / 1000);
-	render();
 
-	lastTime = now;
+	if (delta > updateTime) {
+		update(delta / 20);
+		render();
+		lastTime = now - (delta % updateTime);
+	}
 
 	window.requestAnimationFrame(run);
 }
@@ -73,24 +79,30 @@ function update(deltaTime) {
 	world.Step(1 / 60, 10, 10);
 
 	for (i in sprites) {
-		sprites[i].update();
+		sprites[i].update(deltaTime);
 	}
 }
 
 function render() {
-
 	ctx.fillStyle = "white";
 	ctx.fillRect(0, 0, w, h);
 
-	world.DrawDebugData();
-	world.ClearForces();
 	ctx.strokeStyle = "black";
 	ctx.strokeRect(0, 0, w, h);
+
+	world.DrawDebugData();
+	world.ClearForces();
 
 	for (i in sprites) {
 		sprites[i].draw();
 	}
+}
 
+function addBullet(x, y, angle, speed) {
+	var image = new CanvasImage(images[0], ctx);
+	image.isCircle = true;
+	var bullet = new Bullet(image, world, x, y, angle, speed);
+	sprites.push(bullet);
 }
 
 function loadImage(imgSrc) {
