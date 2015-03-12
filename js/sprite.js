@@ -1,12 +1,17 @@
 Sprite = function() { }
 
-Sprite.prototype.init = function(img) {
+Sprite.prototype.init = function(img, id) {
 	this.img = img;
+
+	this.id = id;
 
 	this.width = 0.75, this.height = 1;
 	this.widthScale = 1; this.heightScale = 1;
 	this.speed = 0;
 	this.torque = 0;
+
+	this.lastPosition = new b2Vec2(0, 0);
+	this.lastAngle = 0;
 }
 
 Sprite.prototype.createBody = function(world, x, y) {
@@ -37,20 +42,30 @@ Sprite.prototype.draw = function() {
 	this.img.draw();
 }
 
-Sprite.prototype.update = function(deltaTime) {
-	this.updatePosition(deltaTime);
-}
-
-Sprite.prototype.updatePosition = function(dt) {
-	if (this.body.GetUserData() == "Tank") {
-		var vx = this.speed * Math.cos(this.body.GetAngle() - Math.PI / 2);
-		var vy = this.speed * Math.sin(this.body.GetAngle() - Math.PI / 2);
-
-		var velocity = new b2Vec2(vx * dt, vy * dt);
-		this.torque *= dt;
-
-		// this.body.SetLinearVelocity(velocity);
-		this.body.ApplyImpulse(velocity, this.body.GetPosition());
-		this.body.SetAngularVelocity(this.torque);
+Sprite.prototype.update = function() {
+	if (typeof io.sockets !== 'undefined') {
+		if (this.hasChanged()) {
+			this.sendMessage();
+		}
 	}
 }
+
+Sprite.prototype.sendMessage = function() {
+	var data = {pos: this.body.GetPosition(), angle: this.body.GetAngle(), id: this.id};
+	io.sockets.emit('spritechanged', data);
+}
+
+Sprite.prototype.hasChanged = function() {
+	if ((this.body.GetPosition().x !== this.lastPosition.x) || (this.body.GetPosition().y !== this.lastPosition.y) || (this.body.GetAngle() !== this.lastAngle)) {
+		this.lastPosition = new b2Vec2(this.body.GetPosition().x, this.body.GetPosition().y);
+		this.lastAngle = this.body.GetAngle();
+		return true;
+	}
+	return false;
+}
+
+Sprite.prototype.destroy = function() {
+	markedToDestroy.push(this);
+}
+
+if (typeof module !== 'undefined') module.exports = Sprite;

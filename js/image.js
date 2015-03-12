@@ -16,22 +16,25 @@ CanvasImage.prototype.draw = function() {
 		this.ctx.arc(this.x, this.y, this.height, 0, 2 * Math.PI, false);
 		this.ctx.fillStyle = this.color;
 		this.ctx.fill();
-	} else if (this.isRect) {
-		this.ctx.save();
-		this.ctx.translate(this.x, this.y);
-		this.ctx.rotate(toRadians * this.angle);
-
-		this.ctx.rect(this.width / 2, this.height / 2, this.width, this.height);
-		this.ctx.fillStyle = this.color;
-		this.ctx.fill();
-
-		this.ctx.restore();
 	} else {
-		this.ctx.save();
-		this.ctx.translate(this.x, this.y);
-		this.ctx.rotate(toRadians * this.angle);
+		if (this.isRect) {
+			this.ctx.save();
+			this.ctx.translate(this.x, this.y);
+			this.ctx.rotate(toRadians * this.angle);
 
-		this.ctx.drawImage(this.imgElement, -this.width / 2, -this.height / 2, this.width, this.height);
-		this.ctx.restore();
+			this.ctx.rect(this.width / 2, this.height / 2, this.width, this.height);
+			this.ctx.fillStyle = this.color;
+			this.ctx.fill();
+
+			this.ctx.restore();
+
+		} else {
+			this.ctx.save();
+			this.ctx.translate(this.x, this.y);
+			this.ctx.rotate(toRadians * this.angle);
+
+			this.ctx.drawImage(this.imgElement, -this.width / 2, -this.height / 2, this.width, this.height);
+			this.ctx.restore();
+		}
 	}
 }

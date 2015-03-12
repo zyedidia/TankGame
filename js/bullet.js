@@ -1,5 +1,5 @@
-Bullet = function(img, world, startx, starty, startAngle, startSpeed) {
-	this.init(img);
+Bullet = function(img, world, startx, starty, startAngle, startSpeed, id) {
+	this.init(img, id);
 
 	this.width = 0.05; this.height = 0.05;
 	this.torque = 0;
@@ -8,16 +8,14 @@ Bullet = function(img, world, startx, starty, startAngle, startSpeed) {
 	this.createBody(world, startx, starty);
 	this.createShape();
 
-	this.body.SetAngle(startAngle * toRadians);
+	this.body.SetAngle(startAngle);
 	this.body.SetUserData("Bullet");
-	// this.body.SetLinearDamping(10);
 	this.body.SetBullet(true);
 
 	var vx = this.speed * Math.cos(this.body.GetAngle() - Math.PI / 2);
 	var vy = this.speed * Math.sin(this.body.GetAngle() - Math.PI / 2);
 
 	var velocity = new b2Vec2(vx, vy);
-
 	this.body.ApplyImpulse(velocity, this.body.GetPosition());
 }
 
@@ -43,7 +41,16 @@ Bullet.prototype.createShape = function() {
 Bullet.prototype.checkCollision = function() {
 	for (var ce = this.body.GetContactList(); ce != null; ce = ce.next) {
 		if (ce.contact.IsTouching()) {
-			console.log("Collision");
+			var userData = ce.contact.GetFixtureA().GetBody().GetUserData();
+			var otherUserData = ce.contact.GetFixtureB().GetBody().GetUserData();
+
+			if (userData === "Tank" || otherUserData === "Tank") {
+				if (typeof io.sockets !== 'undefined') {
+					this.destroy();
+				}
+			}
 		}
 	}
 }
+
+if (typeof module !== 'undefined') module.exports = Bullet;

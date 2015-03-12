@@ -1,0 +1,42 @@
+<html>
+<body>
+	<script src="box2d.min.js"></script>
+	<script src="box2dValues.js"></script>
+<script src="http://code.jquery.com/jquery-1.11.1.min.js"></script>
+<script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
+	<canvas id="canvas" width="700"height="700"></canvas>
+	<script>
+console.log("HI");
+var canvas = $("#canvas")[0];
+var ctx = canvas.getContext("2d");
+var w = $("#canvas").width(); // Width
+var h = $("#canvas").height(); // Height
+
+var debugDraw = new b2DebugDraw();
+debugDraw.SetSprite(ctx);
+debugDraw.SetDrawScale(scale);
+debugDraw.SetFillAlpha(0.3);
+debugDraw.SetLineThickness(1.0);
+debugDraw.SetFlags(b2DebugDraw.e_shapeBit | b2DebugDraw.e_jointBit);
+
+var socket = io();
+
+divs = [];
+
+socket.on('world', function (data) {
+	world.SetDebugDraw(debugDraw);
+	world.DrawDebugData();
+	console.log(world.GetBodyCount());
+});
+
+function request() {
+	socket.emit('request');
+
+	setInterval(request, 16);
+}
+
+request();
+
+	</script>
+</body>
+</html>
