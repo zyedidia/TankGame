@@ -8,6 +8,8 @@ markedToDestroy = [];
 
 var curID = 0;
 
+var teams = [0, 0];
+
 var updateTime = 1000 / 80;
 var lastTime = 0;
 
@@ -18,14 +20,10 @@ function setupWorld() {
 	world = new b2World(new b2Vec2(0, 0), true);
 
 	// Add obstacles here
-	
 	var numObstacles = randInt(3, 9);
 	for (i = 0; i < numObstacles; i++) {
 		addObstacle(randInt(5, gameWidth - 5), randInt(5, gameHeight - 5), randInt(0, 359) * toRadians, randInt(1, 4), randInt(1, 4));
 	}
-	// addObstacle(5, 7, 0, 2, 2, false);
-	// addObstacle(20, 15, 10 * toRadians, 2, 2, false);
-	// addObstacle(10, 18, 0, 2, 2, false);
 
 	addObstacle(gameWidth / 2, 0, 0, gameWidth / 2, 0.01, true);
 	addObstacle(gameWidth / 2, gameHeight, 0, gameWidth / 2, 0.01, true);
@@ -77,14 +75,16 @@ function addObstacle(x, y, angle, width, height, immovable) {
 	sprites[curID] = obstacle;
 }
 
-function addBullet(x, y, angle, speed) {
+function addBullet(x, y, angle, speed, isShot) {
+	if (typeof isShot === 'undefined') isShot = false;
 	curID++;
 	var bullet = new Bullet("", world, x, y, angle, speed, curID);
-	io.sockets.emit('newbullet', {pos: new b2Vec2(x, y), angle:angle, speed: speed, id: curID});
+	io.sockets.emit('newbullet', {pos: new b2Vec2(x, y), angle:angle, speed: speed, id: curID, isShot: isShot});
 	sprites[curID] = bullet;
 }
 
 function addTank(x, y, angle, team, id) {
+	teams[team]++;
 	var tank = new Tank(team, world, x, y, angle, id, true);
 	io.sockets.emit('newtank', {pos: new b2Vec2(x, y), angle: angle, team: team, id: id});
 	console.log("Creating new tank with id " + id);
@@ -107,7 +107,8 @@ function newConnection(socket) {
 
 	socket.emit('gamedimensions', {width: gameWidth, height: gameHeight});
 
-	addTank(9, 15, 0, 0, socket.id);
+	var team = teams[0] > teams[1] ? 1 : 0;
+	addTank(9, 15, 0, team, socket.id);
 }
 
 function randInt(min, max) {
@@ -117,6 +118,7 @@ function randInt(min, max) {
 module.exports.keysDown = keysDown;
 
 module.exports.sprites = sprites;
+module.exports.teams = teams;
 
 module.exports.setupWorld = setupWorld;
 module.exports.tick = tick;

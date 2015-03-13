@@ -23,12 +23,12 @@ var Box2D = {};
       && Object.prototype.__defineGetter__ instanceof Function
       && Object.prototype.__defineSetter__ instanceof Function)
    {
-      // Object.defineProperty = function(obj, p, cfg) {
-      //    if(cfg.get instanceof Function)
-      //       obj.__defineGetter__(p, cfg.get);
-      //    if(cfg.set instanceof Function)
-      //       obj.__defineSetter__(p, cfg.set);
-      // }
+      Object.defineProperty = function(obj, p, cfg) {
+         if(cfg.get instanceof Function)
+            obj.__defineGetter__(p, cfg.get);
+         if(cfg.set instanceof Function)
+            obj.__defineSetter__(p, cfg.set);
+      }
    }
    
    function emptyFn() {};
@@ -1586,10 +1586,11 @@ Box2D.postDefs = [];
             var subInput = new b2RayCastInput();
             subInput.p1 = input.p1;
             subInput.p2 = input.p2;
-            subInput.maxFraction = input.maxFraction;
-            maxFraction = callback(subInput, node);
-            if (maxFraction == 0.0) return;
-            if (maxFraction > 0.0) {
+			subInput.maxFraction = maxFraction;
+            var value = callback(subInput, node);
+            if (value == 0.0) return;
+            if (value > 0.0) {
+               maxFraction = value;
                tX = p1.x + maxFraction * (p2.x - p1.x);
                tY = p1.y + maxFraction * (p2.y - p1.y);
                segmentAABB.lowerBound.x = Math.min(p1.x, tX);
@@ -2948,11 +2949,6 @@ Box2D.postDefs = [];
          aabb.upperBound.y = v1Y;
       }
    }
-/*   b2EdgeShape.prototype.Copy = function () {
-      var s = new b2EdgeShape();
-      s.Set(this);
-      return s;
-   }*/
    b2EdgeShape.prototype.ComputeMass = function (massData, density) {
       if (density === undefined) density = 0;
       massData.mass = 0;
@@ -3280,7 +3276,7 @@ Box2D.postDefs = [];
                upper = numerator / denominator;
             }
          }
-         if (upper < lower - Number.MIN_VALUE) {
+         if (upper < lower - 1.19209290e-7) {
             return false;
          }
       }
@@ -10869,5 +10865,3 @@ Box2D.postDefs = [];
 var i;
 for (i = 0; i < Box2D.postDefs.length; ++i) Box2D.postDefs[i]();
 delete Box2D.postDefs;
-
-module.exports = Box2D;

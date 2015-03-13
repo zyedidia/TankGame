@@ -17,11 +17,11 @@ var scale = 20.0;
 var toRadians = Math.PI / 180;
 var toDegrees = 180 / Math.PI;
 
-function raycast(output, input, sprites) {
+function raycast(output, input, obstacles) {
 	var closestFraction = input.maxFraction;
 	var closestPoint = new b2Vec2(0, 0);
-	for (var key in sprites) {
-		var s = sprites[key];
+	for (i in obstacles) {
+		var s = obstacles[i];
 
 		if (s instanceof Obstacle) {
 			var fixture = s.body.GetFixtureList();

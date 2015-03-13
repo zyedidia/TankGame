@@ -100,16 +100,16 @@ Tank.prototype.updatePosition = function() {
 }
 
 Tank.prototype.shoot = function() {
-	var now = Date.now();
-	if (now - this.lastShot > (this.shotCooldown * 1000)) {
-		console.log("Pew pew");
-		var x = this.body.GetPosition().x;
-		var y = this.body.GetPosition().y;
-		var angle = this.body.GetAngle();
-		if (typeof game !== 'undefined') {
-			game.addBullet(x + 1.5 * Math.cos(angle + Math.PI * 1.5), y + 1.5 * Math.sin(angle + Math.PI * 1.5), angle, 0.25);
+	if (typeof game !== 'undefined') {
+		var now = Date.now();
+		if (now - this.lastShot > (this.shotCooldown * 1000)) {
+			console.log("Pew pew");
+			var x = this.body.GetPosition().x;
+			var y = this.body.GetPosition().y;
+			var angle = this.body.GetAngle();
+			game.addBullet(x + 1.5 * Math.cos(angle + Math.PI * 1.5), y + 1.5 * Math.sin(angle + Math.PI * 1.5), angle, 0.25, true);
+			this.lastShot = now;
 		}
-		this.lastShot = now;
 	}
 }
 
@@ -120,6 +120,9 @@ Tank.prototype.checkCollision = function() {
 			var otherUserData = ce.contact.GetFixtureB().GetBody().GetUserData();
 
 			if (userData === "Bullet" || otherUserData === "Bullet") {
+				if (typeof playAudio !== 'undefined') {
+					playAudio("hit");
+				}
 				this.health -= 1;
 				console.log("Health: " + this.health);
 
@@ -133,26 +136,23 @@ Tank.prototype.checkCollision = function() {
 	}
 }
 
-Tank.prototype.lineOfSight = function(sprites) {
+Tank.prototype.lineOfSight = function(obstacles) {
 	var points = [];
 	var pointsToTest = [];
 	var corners = [new b2Vec2(0, 0), new b2Vec2(0, gameHeight), new b2Vec2(gameWidth, 0), new b2Vec2(gameWidth, gameHeight)];
-	for (var key in sprites) {
-		var s = sprites[key];
+	for (i in obstacles) {
+		var s = obstacles[i];
 
-		if (s instanceof Obstacle) {
-			if (!s.immovable) {
-				var vertices = s.body.GetFixtureList().GetShape().GetVertices();
-				for (i in vertices) {
-					var vertex = s.body.GetWorldPoint(vertices[i]);
-					// pointsToTest.push(vertex);
-					var pos = this.body.GetPosition();
-					var angle = Math.atan2(pos.y - vertex.y, pos.x - vertex.x);
-					var upVertex = new b2Vec2(pos.x - Math.cos(angle + 0.0001), pos.y - Math.sin(angle + 0.0001));
-					pointsToTest.push(upVertex);
-					var downVertex = new b2Vec2(pos.x - Math.cos(angle - 0.0001), pos.y - Math.sin(angle - 0.0001));
-					pointsToTest.push(downVertex);
-				}
+		if (!s.immovable) {
+			var vertices = s.body.GetFixtureList().GetShape().GetVertices();
+			for (i in vertices) {
+				var vertex = s.body.GetWorldPoint(vertices[i]);
+				var pos = this.body.GetPosition();
+				var angle = Math.atan2(pos.y - vertex.y, pos.x - vertex.x);
+				var upVertex = new b2Vec2(pos.x - Math.cos(angle + 0.0001), pos.y - Math.sin(angle + 0.0001));
+				pointsToTest.push(upVertex);
+				var downVertex = new b2Vec2(pos.x - Math.cos(angle - 0.0001), pos.y - Math.sin(angle - 0.0001));
+				pointsToTest.push(downVertex);
 			}
 		}
 	}
@@ -177,7 +177,7 @@ Tank.prototype.lineOfSight = function(sprites) {
 
 		var output = new b2RayCastOutput();
 
-		var intersectionPoint = raycast(output, input, sprites);
+		var intersectionPoint = raycast(output, input, obstacles);
 		points.push(intersectionPoint);
 	}
 

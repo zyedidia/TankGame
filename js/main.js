@@ -8,14 +8,12 @@ var h = $("#canvas").height(); // Height
 var gameWidth = w;
 var gameHeight = h;
 
-var maskCanvas = document.createElement('canvas');
-maskCanvas.width = canvas.width;
-maskCanvas.height = canvas.height;
-var maskCtx = maskCanvas.getContext('2d');
-
 var images = [];
 var sprites = {};
 var markedToDestroy = [];
+var explosions = [];
+
+var mainTank;
 
 var updateTime = 1000 / 80;
 var lastTime = 0;
@@ -32,6 +30,12 @@ socket.on('id', function(id) {
 socket.on('gamedimensions', function(dimensions) {
 	gameWidth = dimensions.width;
 	gameHeight = dimensions.height;
+
+	maskCanvas = document.createElement('canvas');
+	maskCanvas.width = gameWidth * scale;
+	maskCanvas.height = gameHeight * scale;
+
+	maskCtx = maskCanvas.getContext('2d');
 })
 
 socket.on('newtank', function(data) {
@@ -40,6 +44,7 @@ socket.on('newtank', function(data) {
 });
 
 socket.on('newbullet', function(data) {
+	if (data.isShot) playAudio("shoot");
 	addBullet(data.pos.x, data.pos.y, data.angle, data.speed, data.id);
 });
 
@@ -87,6 +92,9 @@ function init() {
 	loadImage("img/greenTank.png");
 	loadImage("img/brownTank.png");
 	loadImage("img/obstacle.png");
+	loadImage("img/explosionSpritesheet.png");
+	loadAudio("shoot", "audio/shoot.wav");
+	loadAudio("hit", "audio/hit.wav");
 
 	setupWorld();
 }
@@ -153,37 +161,40 @@ function render() {
 
 	for (var id in sprites) {
 		var s = sprites[id];
-		if (s instanceof Tank) {
-			if (s.isMainTank) {
-				points = s.lineOfSight(sprites);
-				ctx.beginPath();
-				ctx.moveTo(s.body.GetPosition().x * scale, s.body.GetPosition().y * scale);
-				ctx.lineTo(points[0].x * scale, points[0].y * scale);
-				ctx.stroke();
-				ctx.fillRect(points[0].x * scale, points[0].y * scale, 5, 5);
-				for (i in points) {
-					if (i > 0) {
-						ctx.fillStyle = "blue";
-						ctx.beginPath();
-						ctx.moveTo(s.body.GetPosition().x * scale, s.body.GetPosition().y * scale);
-						ctx.lineTo(points[i].x * scale, points[i].y * scale);
-						ctx.stroke();
-						ctx.fillRect(points[i].x * scale, points[i].y * scale, 5, 5);
-						ctx.lineTo(points[i].x * scale, points[i].y * scale);
-					}
-				}
-			}
-		}
-		// if (s instanceof Obstacle) {
-		// 	obstacles.push(s);
-		// } else {
-			s.draw();
+		// ctx.beginPath();
+		// ctx.moveTo(s.body.GetPosition().x * scale, s.body.GetPosition().y * scale);
+		// ctx.lineTo(points[0].x * scale, points[0].y * scale);
+		// ctx.stroke();
+		// ctx.fillRect(points[0].x * scale, points[0].y * scale, 5, 5);
+		// for (i in points) {
+		// 	if (i > 0) {
+		// 		ctx.fillStyle = "blue";
+		// 		ctx.beginPath();
+		// 		ctx.moveTo(s.body.GetPosition().x * scale, s.body.GetPosition().y * scale);
+		// 		ctx.lineTo(points[i].x * scale, points[i].y * scale);
+		// 		ctx.stroke();
+		// 		ctx.fillRect(points[i].x * scale, points[i].y * scale, 5, 5);
+		// 		ctx.lineTo(points[i].x * scale, points[i].y * scale);
+		// 	}
 		// }
+		if (s instanceof Obstacle) {
+			obstacles.push(s);
+		} else {
+			s.draw();
+		}
+	}
+
+	for (i in explosions) {
+		explosions[i].draw();
+	}
+
+	if (mainTank) {
+		points = mainTank.lineOfSight(obstacles);
 	}
 
 	if (points.length > 0) {
-		maskCtx.fillStyle = "gray";
-		maskCtx.fillRect(0, 0, w, h);
+		maskCtx.fillStyle = "lightgray";
+		maskCtx.fillRect(0, 0, gameWidth * scale, gameHeight * scale);
 
 		maskCtx.save();
 
@@ -191,10 +202,8 @@ function render() {
 
 		maskCtx.beginPath();
 		maskCtx.moveTo(points[0].x * scale, points[0].y * scale);
-		for (i in points) {
-			if (i > 0) {
-				maskCtx.lineTo(points[i].x * scale, points[i].y * scale);
-			}
+		for (i = 1; i < points.length; i++) {
+			maskCtx.lineTo(points[i].x * scale, points[i].y * scale);
 		}
 		maskCtx.closePath();
 		maskCtx.fill();
@@ -202,9 +211,9 @@ function render() {
 		ctx.drawImage(maskCanvas, 0, 0);
 	}
 
-	// for (i in obstacles) {
-	// 	obstacles[i].draw();
-	// }
+	for (i in obstacles) {
+		obstacles[i].draw();
+	}
 
 	ctx.restore();
 }
@@ -226,8 +235,17 @@ function addBullet(x, y, angle, speed, id) {
 function addTank(x, y, angle, team, id) {
 	var image = new CanvasImage(images[team], ctx);
 	var tank = new Tank(image, world, x, y, angle, id, id === myID);
+	if (id === myID) {
+		mainTank = tank;
+	}
 	console.log("Adding tank with id " + id);
 	sprites[id] = tank;
+}
+
+function addExplosion(x, y) {
+	var e = new Explosion(images[3], ctx, x, y, 39, 72);
+	console.log("Explosion: " + e);
+	explosions.push(e);
 }
 
 function loadImage(imgSrc) {

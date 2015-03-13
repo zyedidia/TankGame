@@ -12,6 +12,8 @@ Bullet = function(img, world, startx, starty, startAngle, startSpeed, id) {
 	this.body.SetUserData("Bullet");
 	this.body.SetBullet(true);
 
+	this.bounces = 0;
+
 	var vx = this.speed * Math.cos(this.body.GetAngle() - Math.PI / 2);
 	var vy = this.speed * Math.sin(this.body.GetAngle() - Math.PI / 2);
 
@@ -47,6 +49,16 @@ Bullet.prototype.checkCollision = function() {
 			if (userData === "Tank" || otherUserData === "Tank") {
 				if (typeof io.sockets !== 'undefined') {
 					this.destroy();
+				} else {
+					addExplosion(this.body.GetPosition().x * scale, this.body.GetPosition().y * scale);
+				}
+			} else {
+				this.bounces++;
+
+				if (this.bounces > 4) {
+					if (typeof io.sockets !== 'undefined') {
+						this.destroy();
+					}
 				}
 			}
 		}

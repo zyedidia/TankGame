@@ -1,4 +1,4 @@
-Box2D = require("./box2d.js");
+Box2D = require("./box2dServer.js");
 
 b2Vec2 = Box2D.Common.Math.b2Vec2
 ,	b2BodyDef = Box2D.Dynamics.b2BodyDef
@@ -48,6 +48,7 @@ io.on('connection', function(socket) {
 	socket.on('disconnect', function() {
 		console.log("Destroyed " + socket.id);
 		if (typeof game.sprites[socket.id] !== 'undefined') {
+			game.teams[game.sprites[socket.id].team]--;
 			game.sprites[socket.id].destroy();
 		}
 	});
