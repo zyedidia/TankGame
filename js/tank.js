@@ -1,5 +1,9 @@
+// This is the tank class
+// It inherits from Sprite
+
 Tank = function(img, world, startx, starty, angle, id, mainTank) {
 	if (typeof angle === 'undefined') angle = 0;
+	// Is this tank the tank that the current client controls (always true if this is serverside
 	this.isMainTank = mainTank;
 	this.init(img, id);
 	this.accel = 1;
@@ -20,6 +24,7 @@ Tank = function(img, world, startx, starty, angle, id, mainTank) {
 	this.createBody(world, startx, starty);
 	this.createShape();
 
+	// This physics body is not allowed to sleep
 	this.body.SetSleepingAllowed(false);
 	this.body.SetUserData("Tank");
 	this.body.SetLinearDamping(10);
@@ -29,10 +34,23 @@ Tank = function(img, world, startx, starty, angle, id, mainTank) {
 Tank.prototype = new Sprite();
 Tank.prototype.constructor = Tank;
 
+Tank.prototype.draw = function() {
+	// Call the super class draw()
+	Sprite.prototype.draw.call(this);
+
+	// Draw the health bar
+	var pos = this.body.GetPosition();
+	ctx.fillStyle = "red";
+	ctx.fillRect(pos.x * scale - this.width * scale, pos.y * scale - this.height * scale * 1.75, this.health / 10 * this.width * scale * 2, 5);
+}
+
 Tank.prototype.update = function() {
 	Sprite.prototype.update.call(this);
 	this.checkCollision();
+
+	// Make sure this is not serverside
 	if (typeof camera !== 'undefined') {
+		// If this tank is controlled by the current client, have the camera follow it
 		if (this.isMainTank) {
 			var pos = this.body.GetPosition();
 			camera.x = pos.x; camera.y = pos.y;
@@ -41,6 +59,7 @@ Tank.prototype.update = function() {
 }
 
 Tank.prototype.handleKeys = function(keysDown) {
+	// If this tank is not controlled by the current client do not use keypresses for it
 	if (!this.isMainTank) return;
 	if (typeof keysDown === 'undefined') {
 		keysDown = [];
@@ -92,42 +111,51 @@ Tank.prototype.updatePosition = function() {
 	var vy = this.speed * Math.sin(this.body.GetAngle() - Math.PI / 2);
 
 	var velocity = new b2Vec2(vx, vy);
-
-	// this.body.SetLinearVelocity(velocity);
 	this.body.ApplyImpulse(velocity, this.body.GetPosition());
 
 	this.body.SetAngularVelocity(this.torque);
 }
 
 Tank.prototype.shoot = function() {
+	// Only do anything if this is serverside
+	// A message will be send to clients telling them to spawn bullets
 	if (typeof game !== 'undefined') {
+		// Make sure the shot cooldown has ended
 		var now = Date.now();
 		if (now - this.lastShot > (this.shotCooldown * 1000)) {
 			console.log("Pew pew");
 			var x = this.body.GetPosition().x;
 			var y = this.body.GetPosition().y;
 			var angle = this.body.GetAngle();
+			// Add a bullet to the world
 			game.addBullet(x + 1.5 * Math.cos(angle + Math.PI * 1.5), y + 1.5 * Math.sin(angle + Math.PI * 1.5), angle, 0.25, true);
 			this.lastShot = now;
 		}
 	}
 }
 
+// Check for any collisions
 Tank.prototype.checkCollision = function() {
+	// Loop through all contacts
 	for (var ce = this.body.GetContactList(); ce != null; ce = ce.next) {
 		if (ce.contact.IsTouching()) {
 			var userData = ce.contact.GetFixtureA().GetBody().GetUserData();
 			var otherUserData = ce.contact.GetFixtureB().GetBody().GetUserData();
 
+			// If the collision was with a bullet
 			if (userData === "Bullet" || otherUserData === "Bullet") {
+				// If this is clientside, play the audio
 				if (typeof playAudio !== 'undefined') {
 					playAudio("hit");
 				}
+				// Decrease health
 				this.health -= 1;
 				console.log("Health: " + this.health);
 
 				if (this.health === 0) {
+					// If this is serverside
 					if (typeof io.sockets !== 'undefined') {
+						// Clients will be sent a message that this tank was destroyed
 						this.destroy();
 					}
 				}
@@ -136,16 +164,21 @@ Tank.prototype.checkCollision = function() {
 	}
 }
 
+// Return a list of points showing the line of sight
 Tank.prototype.lineOfSight = function(obstacles) {
 	var points = [];
 	var pointsToTest = [];
+	// The four corners
 	var corners = [new b2Vec2(0, 0), new b2Vec2(0, gameHeight), new b2Vec2(gameWidth, 0), new b2Vec2(gameWidth, gameHeight)];
 	for (i in obstacles) {
 		var s = obstacles[i];
 
+		// If this isn't one of the four outer walls then add its vertices to the points to test
 		if (!s.immovable) {
 			var vertices = s.body.GetFixtureList().GetShape().GetVertices();
 			for (i in vertices) {
+				// Don't actually add the vertex itself
+				// Instead cast a ray slightly above and slightly below the vertex
 				var vertex = s.body.GetWorldPoint(vertices[i]);
 				var pos = this.body.GetPosition();
 				var angle = Math.atan2(pos.y - vertex.y, pos.x - vertex.x);
@@ -157,10 +190,12 @@ Tank.prototype.lineOfSight = function(obstacles) {
 		}
 	}
 
+	// Add the corners
 	for (i in corners) {
 		pointsToTest.push(corners[i]);
 	}
 
+	// Sort the points clockwise
 	var pos = this.body.GetPosition();
 	pointsToTest.sort(function (a, b) {
 		var angleA = Math.atan2(pos.y - a.y, pos.x - a.x);
@@ -177,6 +212,7 @@ Tank.prototype.lineOfSight = function(obstacles) {
 
 		var output = new b2RayCastOutput();
 
+		// Cast each ray and add the intersection points
 		var intersectionPoint = raycast(output, input, obstacles);
 		points.push(intersectionPoint);
 	}

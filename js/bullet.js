@@ -14,6 +14,7 @@ Bullet = function(img, world, startx, starty, startAngle, startSpeed, id) {
 
 	this.bounces = 0;
 
+	// Send the bullet off
 	var vx = this.speed * Math.cos(this.body.GetAngle() - Math.PI / 2);
 	var vy = this.speed * Math.sin(this.body.GetAngle() - Math.PI / 2);
 
@@ -21,6 +22,7 @@ Bullet = function(img, world, startx, starty, startAngle, startSpeed, id) {
 	this.body.ApplyImpulse(velocity, this.body.GetPosition());
 }
 
+// Inherits from sprite
 Bullet.prototype = new Sprite();
 Bullet.prototype.constructor = Bullet;
 
@@ -29,10 +31,12 @@ Bullet.prototype.update = function(dt) {
 	this.checkCollision();
 }
 
+// Override the create shape to create a circular bullet shape
 Bullet.prototype.createShape = function() {
 	var fixDef = new b2FixtureDef;
 	fixDef.density = 1.0;
 	fixDef.friction = 0.0;
+	// Lots of bounciness
 	fixDef.restitution = 1.0;
 
 	fixDef.shape = new b2CircleShape;
@@ -47,9 +51,11 @@ Bullet.prototype.checkCollision = function() {
 			var otherUserData = ce.contact.GetFixtureB().GetBody().GetUserData();
 
 			if (userData === "Tank" || otherUserData === "Tank") {
+				// If this is serverside, destroy itself
 				if (typeof io.sockets !== 'undefined') {
 					this.destroy();
 				} else {
+					// If this is clientside, animate an explosion
 					addExplosion(this.body.GetPosition().x * scale, this.body.GetPosition().y * scale);
 				}
 			} else {

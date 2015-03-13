@@ -1,3 +1,6 @@
+// Sprite class
+// Holds a physics body and an image for drawing
+
 Sprite = function() { }
 
 Sprite.prototype.init = function(img, id) {
@@ -14,13 +17,17 @@ Sprite.prototype.init = function(img, id) {
 	this.lastAngle = 0;
 }
 
+// Create the physics body
+// Default body and shape are for a tank
 Sprite.prototype.createBody = function(world, x, y) {
 	var bodyDef = new b2BodyDef;
+	// Dynamic body
 	bodyDef.type = b2Body.b2_dynamicBody;
 	bodyDef.position = new b2Vec2(x, y);
 	this.body = world.CreateBody(bodyDef);
 }
 
+// Create the shape
 Sprite.prototype.createShape = function() {
 	var fixDef = new b2FixtureDef;
 	fixDef.density = 1.0;
@@ -31,8 +38,8 @@ Sprite.prototype.createShape = function() {
 	this.body.CreateFixture(fixDef);
 }
 
+// Draw the image
 Sprite.prototype.draw = function() {
-	var toDegrees = 180 / Math.PI;
 	var x = this.body.GetPosition().x; var y = this.body.GetPosition().y;
 	var angle = this.body.GetAngle() * toDegrees;
 	this.img.x = x * scale; this.img.y = y * scale;
@@ -43,18 +50,23 @@ Sprite.prototype.draw = function() {
 }
 
 Sprite.prototype.update = function() {
+	// If this is serverside
 	if (typeof io.sockets !== 'undefined') {
+		// If the positions or angle has changed
 		if (this.hasChanged()) {
+			// Send all clients the new position and angle
 			this.sendMessage();
 		}
 	}
 }
 
 Sprite.prototype.sendMessage = function() {
+	// Send all clients the new position and angle
 	var data = {pos: this.body.GetPosition(), angle: this.body.GetAngle(), id: this.id};
 	io.sockets.emit('spritechanged', data);
 }
 
+// Check if the angle or position of this sprite have changed since the last check
 Sprite.prototype.hasChanged = function() {
 	if ((this.body.GetPosition().x !== this.lastPosition.x) || (this.body.GetPosition().y !== this.lastPosition.y) || (this.body.GetAngle() !== this.lastAngle)) {
 		this.lastPosition = new b2Vec2(this.body.GetPosition().x, this.body.GetPosition().y);
@@ -64,6 +76,7 @@ Sprite.prototype.hasChanged = function() {
 	return false;
 }
 
+// Destroy this sprite
 Sprite.prototype.destroy = function() {
 	markedToDestroy.push(this);
 }

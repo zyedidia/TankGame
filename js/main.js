@@ -1,36 +1,51 @@
 var world;
 var keysDown = [];
 
+// The main canvas to draw the world on
 var canvas = $("#canvas")[0];
 var ctx = canvas.getContext("2d");
 var w = $("#canvas").width(); // Width
 var h = $("#canvas").height(); // Height
+// Game width and height
+// The actual values will be sent by the server on connection
 var gameWidth = w;
 var gameHeight = h;
 
+// Store the images
 var images = [];
 var sprites = {};
 var markedToDestroy = [];
 var explosions = [];
 
+// The tank that this client controls
 var mainTank;
 
+// Try to update at 80 fps
 var updateTime = 1000 / 80;
 var lastTime = 0;
 
+// This client's id (sent to the client on connection)
 var myID;
 
+// The socket used for communication with the server
 var socket = io();
 
+// Messages
+
 socket.on('id', function(id) {
+	// Message from the server containing this client's id
 	console.log("Received id " + id);
 	myID = id;
 });
 
+// Message containing the real game dimensions
 socket.on('gamedimensions', function(dimensions) {
+	// Set the real values of gameWidth and gameHeight
 	gameWidth = dimensions.width;
 	gameHeight = dimensions.height;
 
+	// Create a maskCanvas
+	// This will be used to draw the line of sight
 	maskCanvas = document.createElement('canvas');
 	maskCanvas.width = gameWidth * scale;
 	maskCanvas.height = gameHeight * scale;
@@ -60,13 +75,15 @@ socket.on('spritechanged', function(data) {
 	if (typeof sprites[data.id] !== 'undefined') {
 		sprites[data.id].body.SetPositionAndAngle(data.pos, data.angle);
 	}
-})
+});
 
+// When a key is pressed, add it to keysDown and send the new array to the server
 addEventListener("keydown", function (e) {
 	keysDown[e.keyCode || e.which] = true;
 	socket.emit('input', keysDown);
 }, false);
 
+// When a key is released, remove it from keysDown and send the new array to the server
 addEventListener("keyup", function (e) {
 	delete keysDown[e.keyCode || e.which];
 	socket.emit('input', keysDown);
@@ -75,9 +92,11 @@ addEventListener("keyup", function (e) {
 init();
 start();
 
+// Set up the physics world
 function setupWorld() {
 	world = new b2World(new b2Vec2(0, 0), true);
 
+	// Box2D debug drawing
 	var debugDraw = new b2DebugDraw();
 	debugDraw.SetSprite(ctx);
 	debugDraw.SetDrawScale(scale);
@@ -89,6 +108,7 @@ function setupWorld() {
 }
 
 function init() {
+	// Load media
 	loadImage("img/greenTank.png");
 	loadImage("img/brownTank.png");
 	loadImage("img/obstacle.png");
@@ -100,6 +120,7 @@ function init() {
 }
 
 function start() {
+	// Start the main loop
 	window.requestAnimationFrame(run);
 }
 
@@ -107,6 +128,7 @@ function run(time) {
 	var now = Date.now();
 	var delta = now - lastTime;
 
+	// Make sure we are not updating faster than 80 fps
 	if (delta > updateTime) {
 		update();
 		render();
@@ -117,8 +139,10 @@ function run(time) {
 }
 
 function update() {
+	// Update the physics world
 	world.Step(1 / 80, 10, 10);
 
+	// Update all sprites
 	for (var id in sprites) {
 		var s = sprites[id];
 		if (s instanceof Tank) {
@@ -128,6 +152,7 @@ function update() {
 		s.update();
 	}
 
+	// Remove sprites in markedToDestroy
 	collectGarbage();
 }
 
@@ -144,15 +169,20 @@ function collectGarbage() {
 }
 
 function render() {
+	// Draw the white background
 	ctx.fillStyle = "white";
 	ctx.fillRect(0, 0, w, h);
 
 	ctx.save();
+	// Translate everything to look like the camera is moving in the world
+	// When actually the world is moving around the camera
 	ctx.translate(-camera.x * scale + w / 2, -camera.y * scale + h / 2);
 
+	// Draw the box2D debug data
 	world.DrawDebugData();
 	world.ClearForces();
 
+	// Draw the black outline on the edge of the world
 	ctx.strokeStyle = "black";
 	ctx.strokeRect(0, 0, gameWidth * scale, gameHeight * scale);
 
@@ -177,6 +207,9 @@ function render() {
 		// 		ctx.lineTo(points[i].x * scale, points[i].y * scale);
 		// 	}
 		// }
+		
+		// Draw all sprites except the obstacles (obstacles will be drawn afterward
+		// So that they are drawn on top of the line of sight
 		if (s instanceof Obstacle) {
 			obstacles.push(s);
 		} else {
@@ -184,22 +217,33 @@ function render() {
 		}
 	}
 
+	// Draw all the explosions
 	for (i in explosions) {
 		explosions[i].draw();
 	}
 
+	// If the mainTank is not null
 	if (mainTank) {
+		// Get the points for line of sight from it
 		points = mainTank.lineOfSight(obstacles);
 	}
 
+	// This is where the line of sight is drawn from the points given by the tank
 	if (points.length > 0) {
+		// Draw a big light gray rectangle over everything
+		// Draw this in the mask canvas
 		maskCtx.fillStyle = "lightgray";
 		maskCtx.fillRect(0, 0, gameWidth * scale, gameHeight * scale);
 
 		maskCtx.save();
 
+		// This will clip the next drawn shape out of the big rectangle
 		maskCtx.globalCompositeOperation = 'xor';
 
+		// Draw the line of sight
+		// This is drawing a polygon over everything that the tank CAN see
+		// This clips that shape (everything that the tank can see) out of the big rectangle
+		// Leaving you with everything the tank can't see covered
 		maskCtx.beginPath();
 		maskCtx.moveTo(points[0].x * scale, points[0].y * scale);
 		for (i = 1; i < points.length; i++) {
@@ -208,13 +252,16 @@ function render() {
 		maskCtx.closePath();
 		maskCtx.fill();
 		maskCtx.restore();
+		// Draw the maskCanvas on the real canvas
 		ctx.drawImage(maskCanvas, 0, 0);
 	}
 
+	// Now draw all the obstacles over the line of sight (meaning you can always see obstacles)
 	for (i in obstacles) {
 		obstacles[i].draw();
 	}
 
+	// Restore the camera translations made at the beginning
 	ctx.restore();
 }
 

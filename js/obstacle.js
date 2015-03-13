@@ -19,6 +19,7 @@ Obstacle.prototype = new Sprite();
 Obstacle.prototype.constructor = Obstacle;
 
 Obstacle.prototype.setImmovable = function() {
+	// Set this to a static body so it won't move
 	this.body.SetType(b2Body.b2_staticBody);
 	this.immovable = true;
 }
