@@ -11,6 +11,8 @@ Tank = function(img, world, startx, starty, angle, id, mainTank) {
 	this.width = 0.75, this.height = 1;
 	this.widthScale = 1.4;
 
+	this.name = "No name";
+
 	if (typeof img === 'number') {
 		this.team = img;
 	} else {
@@ -40,8 +42,13 @@ Tank.prototype.draw = function() {
 
 	// Draw the health bar
 	var pos = this.body.GetPosition();
-	ctx.fillStyle = "red";
+	ctx.fillStyle = "lightgreen";
 	ctx.fillRect(pos.x * scale - this.width * scale, pos.y * scale - this.height * scale * 1.75, this.health / 10 * this.width * scale * 2, 5);
+
+	ctx.fillStyle = "red";
+	ctx.font = "15px Georgia";
+	var nameWidth = ctx.measureText(this.name).width;
+	ctx.fillText(this.name, pos.x * scale - nameWidth / 2, pos.y * scale);
 }
 
 Tank.prototype.update = function() {

@@ -54,6 +54,15 @@ io.on('connection', function(socket) {
 		game.keysDown[socket.id] = input;
 	});
 
+	socket.on('name', function(name) {
+		game.sprites[socket.id].name = name;
+		io.sockets.emit('tankname', {name: name, id: socket.id});
+	});
+
+	socket.on('chatmessage', function(msg) {
+		socket.broadcast.emit('chatmessage', msg);
+	});
+
 	// When this user disconnects
 	socket.on('disconnect', function() {
 		console.log("Destroyed " + socket.id);

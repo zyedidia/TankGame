@@ -71,6 +71,10 @@ function collectGarbage() {
 	for (i in markedToDestroy) {
 		world.DestroyBody(markedToDestroy[i].body);
 		console.log("Destroyed 1 body");
+		var s = sprites[markedToDestroy[i]];
+		if (s instanceof Tank) {
+			teams[s.team]--;
+		}
 		delete sprites[markedToDestroy[i].id];
 		console.log("Destroyed 1 sprite");
 		// Tell all clients to destroy this sprite too
@@ -113,7 +117,7 @@ function newConnection(socket) {
 	for (i in sprites) {
 		var s = sprites[i];
 		if (s instanceof Tank) {
-			socket.emit('newtank', {pos: s.body.GetPosition(), angle: s.body.GetAngle(), team: s.team, id: s.id});
+			socket.emit('newtank', {pos: s.body.GetPosition(), angle: s.body.GetAngle(), team: s.team, id: s.id, name: s.name});
 		} else if (s instanceof Obstacle) {
 			socket.emit('newobstacle', {pos: s.body.GetPosition(), angle: s.body.GetAngle(), width: s.width, height: s.height, immovable: s.immovable, id: s.id});
 		} else if (s instanceof Bullet) {
@@ -133,7 +137,7 @@ function newConnection(socket) {
 }
 
 function randInt(min, max) {
-    return Math.floor(Math.random() * (max - min + 1)) + min;
+	return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
 // Export variables needed in server.js

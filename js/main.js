@@ -17,6 +17,10 @@ var sprites = {};
 var markedToDestroy = [];
 var explosions = [];
 
+var chat;
+
+var keys = [38, 40, 39, 37, 32];
+
 // The tank that this client controls
 var mainTank;
 
@@ -55,7 +59,7 @@ socket.on('gamedimensions', function(dimensions) {
 
 socket.on('newtank', function(data) {
 	console.log("New tank with id " + data.id);
-	addTank(data.pos.x, data.pos.y, data.angle, data.team, data.id);
+	addTank(data.pos.x, data.pos.y, data.angle, data.team, data.id, data.name);
 });
 
 socket.on('newbullet', function(data) {
@@ -71,22 +75,37 @@ socket.on('destroysprite', function(id) {
 	markedToDestroy.push(sprites[id]);
 });
 
+socket.on('tankname', function(data) {
+	sprites[data.id].name = data.name;
+});
+
 socket.on('spritechanged', function(data) {
 	if (typeof sprites[data.id] !== 'undefined') {
 		sprites[data.id].body.SetPositionAndAngle(data.pos, data.angle);
 	}
 });
 
+socket.on('chatmessage', function(msg) {
+	chat.addMessage(msg);
+})
+
 // When a key is pressed, add it to keysDown and send the new array to the server
 addEventListener("keydown", function (e) {
-	keysDown[e.keyCode || e.which] = true;
-	socket.emit('input', keysDown);
+	var key = e.keyCode || e.which;
+	if (keys.indexOf(key) > -1 && !chat.isFocused) {
+		keysDown[key] = true;
+		socket.emit('input', keysDown);
+	}
 }, false);
 
 // When a key is released, remove it from keysDown and send the new array to the server
 addEventListener("keyup", function (e) {
-	delete keysDown[e.keyCode || e.which];
-	socket.emit('input', keysDown);
+	var key = e.keyCode || e.which;
+	chat.keyPressed(key);
+	if (keys.indexOf(key) > -1) {
+		delete keysDown[key];
+		socket.emit('input', keysDown);
+	}
 }, false);
 
 init();
@@ -120,6 +139,15 @@ function init() {
 }
 
 function start() {
+	var myName = prompt("Please enter your name", "No name");
+	if (myName === null || myName === "") {
+		myName = "No name";
+	}
+	socket.emit('name', myName);
+	console.log("Sent " + myName);
+
+	chat = new Chat(20, h - 50, myName);
+
 	// Start the main loop
 	window.requestAnimationFrame(run);
 }
@@ -207,7 +235,7 @@ function render() {
 		// 		ctx.lineTo(points[i].x * scale, points[i].y * scale);
 		// 	}
 		// }
-		
+
 		// Draw all sprites except the obstacles (obstacles will be drawn afterward
 		// So that they are drawn on top of the line of sight
 		if (s instanceof Obstacle) {
@@ -263,6 +291,8 @@ function render() {
 
 	// Restore the camera translations made at the beginning
 	ctx.restore();
+
+	chat.render();
 }
 
 function addObstacle(x, y, angle, width, height, immovable, id) {
@@ -279,11 +309,14 @@ function addBullet(x, y, angle, speed, id) {
 	sprites[id] = bullet;
 }
 
-function addTank(x, y, angle, team, id) {
+function addTank(x, y, angle, team, id, name) {
 	var image = new CanvasImage(images[team], ctx);
 	var tank = new Tank(image, world, x, y, angle, id, id === myID);
 	if (id === myID) {
 		mainTank = tank;
+	}
+	if (typeof name !== 'undefined') {
+		tank.name = name;
 	}
 	console.log("Adding tank with id " + id);
 	sprites[id] = tank;
