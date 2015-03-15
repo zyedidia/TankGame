@@ -3,7 +3,7 @@
 
 Tank = function(img, world, startx, starty, angle, id, mainTank) {
 	if (typeof angle === 'undefined') angle = 0;
-	// Is this tank the tank that the current client controls (always true if this is serverside
+	// Is this tank the tank that the current client controls (always true if this is serverside)
 	this.isMainTank = mainTank;
 	this.init(img, id);
 	this.accel = 1;
@@ -11,11 +11,13 @@ Tank = function(img, world, startx, starty, angle, id, mainTank) {
 	this.width = 0.75, this.height = 1;
 	this.widthScale = 1.4;
 
+	this.dead = false;
+
+	this.spawn = new b2Vec2(9, 15);
+
 	this.name = "No name";
 
-	if (typeof img === 'number') {
-		this.team = img;
-	} else {
+	if (img.imgElement) {
 		this.team = img.imgElement.src.indexOf("green") > -1 ? 0 : 1;
 	}
 
@@ -37,18 +39,20 @@ Tank.prototype = new Sprite();
 Tank.prototype.constructor = Tank;
 
 Tank.prototype.draw = function() {
-	// Call the super class draw()
-	Sprite.prototype.draw.call(this);
+	if (!this.dead) {
+		// Call the super class draw()
+		Sprite.prototype.draw.call(this);
 
-	// Draw the health bar
-	var pos = this.body.GetPosition();
-	ctx.fillStyle = "lightgreen";
-	ctx.fillRect(pos.x * scale - this.width * scale, pos.y * scale - this.height * scale * 1.75, this.health / 10 * this.width * scale * 2, 5);
+		// Draw the health bar
+		var pos = this.body.GetPosition();
+		ctx.fillStyle = "lightgreen";
+		ctx.fillRect(pos.x * scale - this.width * scale, pos.y * scale - this.height * scale * 1.75, this.health / 10 * this.width * scale * 2, 5);
 
-	ctx.fillStyle = "red";
-	ctx.font = "15px Georgia";
-	var nameWidth = ctx.measureText(this.name).width;
-	ctx.fillText(this.name, pos.x * scale - nameWidth / 2, pos.y * scale);
+		ctx.fillStyle = "red";
+		ctx.font = "15px Georgia";
+		var nameWidth = ctx.measureText(this.name).width;
+		ctx.fillText(this.name, pos.x * scale - nameWidth / 2, pos.y * scale);
+	}
 }
 
 Tank.prototype.update = function() {
@@ -68,6 +72,7 @@ Tank.prototype.update = function() {
 Tank.prototype.handleKeys = function(keysDown) {
 	// If this tank is not controlled by the current client do not use keypresses for it
 	if (!this.isMainTank) return;
+	if (this.dead) return;
 	if (typeof keysDown === 'undefined') {
 		keysDown = [];
 	} 
@@ -141,6 +146,27 @@ Tank.prototype.shoot = function() {
 	}
 }
 
+Tank.prototype.respawn = function() {
+	this.dead = false;
+	this.body.SetType(b2Body.b2_dynamicBody);
+	this.body.GetFixtureList().SetSensor(false);
+
+	this.health = 10; this.ammo = 10;
+	this.body.SetLinearVelocity(new b2Vec2(0, 0));
+	this.body.SetAngularVelocity(0);
+	this.body.SetPosition(this.spawn);
+
+	io.sockets.emit("respawn", this.id);
+}
+
+Tank.prototype.die = function() {
+	this.body.GetFixtureList().SetSensor(true);
+	this.body.SetType(b2Body.b2_staticBody);
+	this.dead = true;
+
+	io.sockets.emit("die", this.id);
+}
+
 // Check for any collisions
 Tank.prototype.checkCollision = function() {
 	// Loop through all contacts
@@ -151,6 +177,7 @@ Tank.prototype.checkCollision = function() {
 
 			// If the collision was with a bullet
 			if (userData === "Bullet" || otherUserData === "Bullet") {
+				console.log("Collided with bullet");
 				// If this is clientside, play the audio
 				if (typeof playAudio !== 'undefined') {
 					playAudio("hit");
@@ -163,7 +190,15 @@ Tank.prototype.checkCollision = function() {
 					// If this is serverside
 					if (typeof io.sockets !== 'undefined') {
 						// Clients will be sent a message that this tank was destroyed
-						this.destroy();
+						// this.destroy();
+
+						this.die();
+
+						// Respawn in 1 second
+						var tank = this;
+						setTimeout(function() {
+							tank.respawn();
+						}, 3000);
 					}
 				}
 			}

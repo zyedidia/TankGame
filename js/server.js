@@ -24,6 +24,7 @@ Tank = require("./tank.js");
 Bullet = require("./bullet.js");
 Obstacle = require("./obstacle.js");
 game = require("./game.js");
+
 var app = require('express')();
 var express = require('express');
 var http = require('http').Server(app);
@@ -69,9 +70,9 @@ io.on('connection', function(socket) {
 		// If they are not already dead (from being shot in game)
 		if (typeof game.sprites[socket.id] !== 'undefined') {
 			// Remove them from the world
-			game.teams[game.sprites[socket.id].team]--;
 			game.sprites[socket.id].destroy();
 		}
+		console.log("Teams: " + game.teams);
 	});
 });
 

@@ -21,6 +21,8 @@ var lastTime = 0;
 var gameWidth = 50;
 var gameHeight = 50;
 
+var spawns = [];
+
 // Set up the physics world
 function setupWorld() {
 	//                               v No gravity
@@ -31,6 +33,9 @@ function setupWorld() {
 	for (i = 0; i < numObstacles; i++) {
 		addObstacle(randInt(5, gameWidth - 5), randInt(5, gameHeight - 5), randInt(0, 359) * toRadians, randInt(1, 4), randInt(1, 4));
 	}
+
+	spawns[0] = new b2Vec2(5, 5);
+	spawns[1] = new b2Vec2(gameWidth - 5, gameHeight - 5);
 
 	// The four outer walls
 	addObstacle(gameWidth / 2, 0, 0, gameWidth / 2, 0.01, true);
@@ -71,14 +76,12 @@ function collectGarbage() {
 	for (i in markedToDestroy) {
 		world.DestroyBody(markedToDestroy[i].body);
 		console.log("Destroyed 1 body");
-		var s = sprites[markedToDestroy[i]];
-		if (s instanceof Tank) {
-			teams[s.team]--;
-		}
-		delete sprites[markedToDestroy[i].id];
+		var s = markedToDestroy[i];
+		if (s instanceof Tank) teams[s.team]--;
+		delete sprites[s.id];
 		console.log("Destroyed 1 sprite");
 		// Tell all clients to destroy this sprite too
-		io.sockets.emit('destroysprite', markedToDestroy[i].id);
+		io.sockets.emit('destroysprite', s.id);
 	}
 
 	markedToDestroy = [];
@@ -105,9 +108,11 @@ function addBullet(x, y, angle, speed, isShot) {
 // Add a tank to the world
 function addTank(x, y, angle, team, id) {
 	teams[team]++;
-	var tank = new Tank(team, world, x, y, angle, id, true);
+	var tank = new Tank("", world, x, y, angle, id, true);
+	tank.team = team;
 	io.sockets.emit('newtank', {pos: new b2Vec2(x, y), angle: angle, team: team, id: id});
 	console.log("Creating new tank with id " + id);
+	tank.spawn = spawns[team];
 	sprites[id] = tank;
 }
 
@@ -117,7 +122,7 @@ function newConnection(socket) {
 	for (i in sprites) {
 		var s = sprites[i];
 		if (s instanceof Tank) {
-			socket.emit('newtank', {pos: s.body.GetPosition(), angle: s.body.GetAngle(), team: s.team, id: s.id, name: s.name});
+			socket.emit('newtank', {pos: s.body.GetPosition(), angle: s.body.GetAngle(), team: s.team, id: s.id, name: s.name, dead: s.dead, health: s.health});
 		} else if (s instanceof Obstacle) {
 			socket.emit('newobstacle', {pos: s.body.GetPosition(), angle: s.body.GetAngle(), width: s.width, height: s.height, immovable: s.immovable, id: s.id});
 		} else if (s instanceof Bullet) {
@@ -132,8 +137,9 @@ function newConnection(socket) {
 
 	// Put them on a team
 	var team = teams[0] > teams[1] ? 1 : 0;
+	var spawn = spawns[team]
 	// Tell all clients to make a new tank (including the new user)
-	addTank(9, 15, 0, team, socket.id);
+	addTank(spawn.x, spawn.y, 0, team, socket.id);
 }
 
 function randInt(min, max) {

@@ -1,5 +1,4 @@
-CanvasImage = function(imgElement, ctx) {
-	this.ctx = ctx;
+CanvasImage = function(imgElement) {
 	this.isCircle = this.imgElement == "Circle";
 	this.isRect = this.imgElement == "Rect";
 	this.imgElement = imgElement;
@@ -12,29 +11,16 @@ CanvasImage = function(imgElement, ctx) {
 
 CanvasImage.prototype.draw = function() {
 	if (this.isCircle) {
-		this.ctx.beginPath();
-		this.ctx.arc(this.x, this.y, this.height, 0, 2 * Math.PI, false);
-		this.ctx.fillStyle = this.color;
-		this.ctx.fill();
+		ctx.beginPath();
+		ctx.arc(this.x, this.y, this.height, 0, 2 * Math.PI, false);
+		ctx.fillStyle = this.color;
+		ctx.fill();
 	} else {
-		if (this.isRect) {
-			this.ctx.save();
-			this.ctx.translate(this.x, this.y);
-			this.ctx.rotate(toRadians * this.angle);
+		ctx.save();
+		ctx.translate(this.x, this.y);
+		ctx.rotate(toRadians * this.angle);
 
-			this.ctx.rect(this.width / 2, this.height / 2, this.width, this.height);
-			this.ctx.fillStyle = this.color;
-			this.ctx.fill();
-
-			this.ctx.restore();
-
-		} else {
-			this.ctx.save();
-			this.ctx.translate(this.x, this.y);
-			this.ctx.rotate(toRadians * this.angle);
-
-			this.ctx.drawImage(this.imgElement, -this.width / 2, -this.height / 2, this.width, this.height);
-			this.ctx.restore();
-		}
+		ctx.drawImage(this.imgElement, -this.width / 2, -this.height / 2, this.width, this.height);
+		ctx.restore();
 	}
 }

@@ -6,6 +6,7 @@ var canvas = $("#canvas")[0];
 var ctx = canvas.getContext("2d");
 var w = $("#canvas").width(); // Width
 var h = $("#canvas").height(); // Height
+
 // Game width and height
 // The actual values will be sent by the server on connection
 var gameWidth = w;
@@ -23,6 +24,8 @@ var keys = [38, 40, 39, 37, 32];
 
 // The tank that this client controls
 var mainTank;
+
+var spawns;
 
 // Try to update at 80 fps
 var updateTime = 1000 / 80;
@@ -59,7 +62,7 @@ socket.on('gamedimensions', function(dimensions) {
 
 socket.on('newtank', function(data) {
 	console.log("New tank with id " + data.id);
-	addTank(data.pos.x, data.pos.y, data.angle, data.team, data.id, data.name);
+	addTank(data.pos.x, data.pos.y, data.angle, data.team, data.id, data.name, data.dead, data.health);
 });
 
 socket.on('newbullet', function(data) {
@@ -87,6 +90,14 @@ socket.on('spritechanged', function(data) {
 
 socket.on('chatmessage', function(msg) {
 	chat.addMessage(msg);
+});
+
+socket.on('die', function(id) {
+	sprites[id].die();
+});
+
+socket.on('respawn', function(id) {
+	sprites[id].respawn();
 })
 
 // When a key is pressed, add it to keysDown and send the new array to the server
@@ -138,15 +149,25 @@ function init() {
 	setupWorld();
 }
 
-function start() {
-	var myName = prompt("Please enter your name", "No name");
-	if (myName === null || myName === "") {
-		myName = "No name";
+function getName() {
+	if (!localStorage.getItem("name")) {
+		var name = prompt("Please enter your name", "No name");
+		if (name === null || name === "") {
+			name = "No name";
+		}
+		name = name.substring(0, 10);
+		localStorage.setItem("name", name);
+	} else {
+		name = localStorage.getItem("name");
 	}
-	socket.emit('name', myName);
-	console.log("Sent " + myName);
+	return name;
+}
 
-	chat = new Chat(20, h - 50, myName);
+function start() {
+	var name = getName();
+	socket.emit("name", name);
+
+	chat = new Chat(20, h - 50, name);
 
 	// Start the main loop
 	window.requestAnimationFrame(run);
@@ -219,22 +240,6 @@ function render() {
 
 	for (var id in sprites) {
 		var s = sprites[id];
-		// ctx.beginPath();
-		// ctx.moveTo(s.body.GetPosition().x * scale, s.body.GetPosition().y * scale);
-		// ctx.lineTo(points[0].x * scale, points[0].y * scale);
-		// ctx.stroke();
-		// ctx.fillRect(points[0].x * scale, points[0].y * scale, 5, 5);
-		// for (i in points) {
-		// 	if (i > 0) {
-		// 		ctx.fillStyle = "blue";
-		// 		ctx.beginPath();
-		// 		ctx.moveTo(s.body.GetPosition().x * scale, s.body.GetPosition().y * scale);
-		// 		ctx.lineTo(points[i].x * scale, points[i].y * scale);
-		// 		ctx.stroke();
-		// 		ctx.fillRect(points[i].x * scale, points[i].y * scale, 5, 5);
-		// 		ctx.lineTo(points[i].x * scale, points[i].y * scale);
-		// 	}
-		// }
 
 		// Draw all sprites except the obstacles (obstacles will be drawn afterward
 		// So that they are drawn on top of the line of sight
@@ -296,27 +301,25 @@ function render() {
 }
 
 function addObstacle(x, y, angle, width, height, immovable, id) {
-	var image = new CanvasImage(images[2], ctx);
+	var image = new CanvasImage(images[2]);
 	var obstacle = new Obstacle(image, world, x, y, angle, width, height, id);
 	if (immovable) obstacle.setImmovable();
 	sprites[id] = obstacle;
 }
 
 function addBullet(x, y, angle, speed, id) {
-	var image = new CanvasImage(images[0], ctx);
+	var image = new CanvasImage(images[0]);
 	image.isCircle = true;
 	var bullet = new Bullet(image, world, x, y, angle, speed, id);
 	sprites[id] = bullet;
 }
 
-function addTank(x, y, angle, team, id, name) {
-	var image = new CanvasImage(images[team], ctx);
+function addTank(x, y, angle, team, id, name, dead, health) {
+	var image = new CanvasImage(images[team]);
 	var tank = new Tank(image, world, x, y, angle, id, id === myID);
-	if (id === myID) {
-		mainTank = tank;
-	}
+	if (id === myID) mainTank = tank;
 	if (typeof name !== 'undefined') {
-		tank.name = name;
+		tank.name = name; tank.health = health; tank.dead = dead;
 	}
 	console.log("Adding tank with id " + id);
 	sprites[id] = tank;
@@ -324,7 +327,6 @@ function addTank(x, y, angle, team, id, name) {
 
 function addExplosion(x, y) {
 	var e = new Explosion(images[3], ctx, x, y, 39, 72);
-	console.log("Explosion: " + e);
 	explosions.push(e);
 }
 

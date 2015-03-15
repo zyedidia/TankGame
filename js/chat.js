@@ -3,6 +3,8 @@ Chat = function(x, y, name) {
 	this.name = name;
 	this.isFocused = false;
 
+	this.maxText = 5;
+
 	var chat = this;
 	this.input = new CanvasInput({
 		x: this.x,
@@ -29,14 +31,20 @@ Chat.prototype.sendMessage = function(msg) {
 
 Chat.prototype.addMessage = function(msg) {
 	this.pastText.unshift(msg);
+
+	if (this.pastText.length > this.maxText) {
+		this.pastText.splice(this.maxText, 1);
+	}
 }
 
 Chat.prototype.keyPressed = function(key) {
-	console.log("Key: " + key);
+	// t key
 	if (key == 84) {
 		this.input.focus();
 		this.isFocused = true;
+	// Escape key
 	} else if (key == 27) {
+		this.input.value("");
 		this.input.blur();
 		this.isFocused = false;
 	}
