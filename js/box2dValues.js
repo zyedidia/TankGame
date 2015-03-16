@@ -12,6 +12,7 @@ var b2Vec2 = Box2D.Common.Math.b2Vec2
 ,	b2DebugDraw = Box2D.Dynamics.b2DebugDraw
 ,   b2RayCastInput = Box2D.Collision.b2RayCastInput
 ,   b2RayCastOutput = Box2D.Collision.b2RayCastOutput
+,   b2FilterData = Box2D.Dynamics.b2FilterData
 ;
 
 // Scale of pixels to meters (box2D units)

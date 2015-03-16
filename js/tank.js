@@ -147,9 +147,10 @@ Tank.prototype.shoot = function() {
 }
 
 Tank.prototype.respawn = function() {
+	var filter = new b2FilterData();
+	this.body.GetFixtureList().SetFilterData(filter);
+
 	this.dead = false;
-	this.body.SetType(b2Body.b2_dynamicBody);
-	this.body.GetFixtureList().SetSensor(false);
 
 	this.health = 10; this.ammo = 10;
 	this.body.SetLinearVelocity(new b2Vec2(0, 0));
@@ -160,8 +161,9 @@ Tank.prototype.respawn = function() {
 }
 
 Tank.prototype.die = function() {
-	this.body.GetFixtureList().SetSensor(true);
-	this.body.SetType(b2Body.b2_staticBody);
+	var filter = new b2FilterData();
+	filter.maskBits = 0x0000;
+	this.body.GetFixtureList().SetFilterData(filter);
 	this.dead = true;
 
 	io.sockets.emit("die", this.id);
