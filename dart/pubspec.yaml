@@ -1,5 +1,0 @@
-name: TurboTanks
-author: Zachary Yedidia
-dependencies:
-    box2d: ">=0.1.7 <0.2.0"
-
