@@ -17,6 +17,7 @@ var images = [];
 var sprites = {};
 var markedToDestroy = [];
 var explosions = [];
+var scores = [0, 0];
 
 var chat;
 
@@ -53,12 +54,12 @@ socket.on('gamedimensions', function(dimensions) {
 
 	// Create a maskCanvas
 	// This will be used to draw the line of sight
-	maskCanvas = document.createElement('canvas');
-	maskCanvas.width = gameWidth * scale;
-	maskCanvas.height = gameHeight * scale;
-
-	maskCtx = maskCanvas.getContext('2d');
-})
+	// maskCanvas = document.createElement('canvas');
+	// maskCanvas.width = gameWidth * scale;
+	// maskCanvas.height = gameHeight * scale;
+    //
+	// maskCtx = maskCanvas.getContext('2d');
+});
 
 socket.on('newtank', function(data) {
 	console.log("New tank with id " + data.id);
@@ -98,7 +99,12 @@ socket.on('die', function(id) {
 
 socket.on('respawn', function(id) {
 	sprites[id].respawn();
-})
+});
+
+socket.on('score', function(serverScores) {
+	scores = serverScores;
+	console.log(scores);
+});
 
 // When a key is pressed, add it to keysDown and send the new array to the server
 addEventListener("keydown", function (e) {
@@ -150,16 +156,11 @@ function init() {
 }
 
 function getName() {
-	if (!localStorage.getItem("name")) {
-		var name = prompt("Please enter your name", "No name");
-		if (name === null || name === "") {
-			name = "No name";
-		}
-		name = name.substring(0, 10);
-		localStorage.setItem("name", name);
-	} else {
-		name = localStorage.getItem("name");
+	var name = prompt("Please enter your name", "No name");
+	if (name === null || name === "") {
+		name = "No name";
 	}
+	name = name.substring(0, 10);
 	return name;
 }
 
@@ -206,7 +207,7 @@ function update() {
 }
 
 function collectGarbage() {
-	for (i in markedToDestroy) {
+	for (var i in markedToDestroy) {
 		var s = markedToDestroy[i];
 		world.DestroyBody(s.body);
 		console.log("Destroyed 1 body");
@@ -235,67 +236,28 @@ function render() {
 	ctx.strokeStyle = "black";
 	ctx.strokeRect(0, 0, gameWidth * scale, gameHeight * scale);
 
-	var points = [];
-	var obstacles = [];
-
 	for (var id in sprites) {
 		var s = sprites[id];
-
-		// Draw all sprites except the obstacles (obstacles will be drawn afterward
-		// So that they are drawn on top of the line of sight
-		if (s instanceof Obstacle) {
-			obstacles.push(s);
-		} else {
-			s.draw();
-		}
+		s.draw();
 	}
 
 	// Draw all the explosions
-	for (i in explosions) {
+	for (var i in explosions) {
 		explosions[i].draw();
 	}
 
-	// If the mainTank is not null
-	if (mainTank) {
-		// Get the points for line of sight from it
-		points = mainTank.lineOfSight(obstacles);
-	}
-
-	// This is where the line of sight is drawn from the points given by the tank
-	if (points.length > 0) {
-		// Draw a big light gray rectangle over everything
-		// Draw this in the mask canvas
-		maskCtx.fillStyle = "lightgray";
-		maskCtx.fillRect(0, 0, gameWidth * scale, gameHeight * scale);
-
-		maskCtx.save();
-
-		// This will clip the next drawn shape out of the big rectangle
-		maskCtx.globalCompositeOperation = 'xor';
-
-		// Draw the line of sight
-		// This is drawing a polygon over everything that the tank CAN see
-		// This clips that shape (everything that the tank can see) out of the big rectangle
-		// Leaving you with everything the tank can't see covered
-		maskCtx.beginPath();
-		maskCtx.moveTo(points[0].x * scale, points[0].y * scale);
-		for (i = 1; i < points.length; i++) {
-			maskCtx.lineTo(points[i].x * scale, points[i].y * scale);
-		}
-		maskCtx.closePath();
-		maskCtx.fill();
-		maskCtx.restore();
-		// Draw the maskCanvas on the real canvas
-		ctx.drawImage(maskCanvas, 0, 0);
-	}
-
-	// Now draw all the obstacles over the line of sight (meaning you can always see obstacles)
-	for (i in obstacles) {
-		obstacles[i].draw();
-	}
+	// Line of sight here (if needed)
 
 	// Restore the camera translations made at the beginning
 	ctx.restore();
+
+	ctx.font="20px Arial";
+	ctx.fillStyle = "#466432";
+	ctx.fillText("Green Team: " + scores[0], 20, 20);
+
+	ctx.fillStyle = "#6E603C";
+	var width = ctx.measureText("Brown Team: " + scores[1]).width * 2;
+	ctx.fillText("Brown Team: " + scores[1], w - width - 20, 20);
 
 	chat.render();
 }

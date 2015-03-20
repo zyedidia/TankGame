@@ -16,6 +16,7 @@ CanvasImage.prototype.draw = function() {
 		ctx.fillStyle = this.color;
 		ctx.fill();
 	} else {
+		var toRadians = Math.PI / 180;
 		ctx.save();
 		ctx.translate(this.x, this.y);
 		ctx.rotate(toRadians * this.angle);

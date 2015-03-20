@@ -31,8 +31,16 @@ var express = require('express');
 var http = require('http').Server(app);
 io = require('socket.io')(http);
 
-// Set up the world and start the main loop
-game.setupWorld();
+var map = [];
+
+var fs = require('fs');
+
+var text = fs.readFileSync("./map.txt");
+
+map = text.toString().split(/\r?\n/);
+
+game.setupWorld(map);
+console.log("Setup done");
 setInterval(game.tick, 0);
 
 // When serving the client index.html, give access to everything in the current directory
@@ -68,11 +76,9 @@ io.on('connection', function(socket) {
 	// When this user disconnects
 	socket.on('disconnect', function() {
 		console.log("Destroyed " + socket.id);
-		// If they are not already dead (from being shot in game)
-		if (typeof game.sprites[socket.id] !== 'undefined') {
-			// Remove them from the world
-			game.sprites[socket.id].destroy();
-		}
+		// Remove them from the world
+		game.teams[game.sprites[socket.id].team]--;
+		game.sprites[socket.id].destroy();
 		console.log("Teams: " + game.teams);
 	});
 });

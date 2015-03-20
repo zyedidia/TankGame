@@ -8,7 +8,7 @@ Tank = function(img, world, startx, starty, angle, id, mainTank) {
 	this.init(img, id);
 	this.accel = 1;
 	this.maxSpeed = 3; this.rotateSpeed = 2;
-	this.width = 0.75, this.height = 1;
+	this.width = 0.75; this.height = 1;
 	this.widthScale = 1.4;
 
 	this.dead = false;
@@ -161,6 +161,8 @@ Tank.prototype.respawn = function() {
 }
 
 Tank.prototype.die = function() {
+	this.body.SetLinearVelocity(new b2Vec2(0, 0));
+	this.body.SetAngularVelocity(0);
 	var filter = new b2FilterData();
 	filter.maskBits = 0x0000;
 	this.body.GetFixtureList().SetFilterData(filter);
@@ -172,7 +174,7 @@ Tank.prototype.die = function() {
 // Check for any collisions
 Tank.prototype.checkCollision = function() {
 	// Loop through all contacts
-	for (var ce = this.body.GetContactList(); ce != null; ce = ce.next) {
+	for (var ce = this.body.GetContactList(); ce !== null; ce = ce.next) {
 		if (ce.contact.IsTouching()) {
 			var userData = ce.contact.GetFixtureA().GetBody().GetUserData();
 			var otherUserData = ce.contact.GetFixtureB().GetBody().GetUserData();
@@ -194,6 +196,8 @@ Tank.prototype.checkCollision = function() {
 						// Clients will be sent a message that this tank was destroyed
 						// this.destroy();
 
+						game.scores[this.team === 0 ? 1 : 0]++;
+						game.sendScore();
 						this.die();
 
 						// Respawn in 1 second
@@ -213,18 +217,19 @@ Tank.prototype.lineOfSight = function(obstacles) {
 	var points = [];
 	var pointsToTest = [];
 	// The four corners
+	var angle = this.body.GetAngle();
+	var pos = this.body.GetPosition();
 	var corners = [new b2Vec2(0, 0), new b2Vec2(0, gameHeight), new b2Vec2(gameWidth, 0), new b2Vec2(gameWidth, gameHeight)];
-	for (i in obstacles) {
+	for (var i in obstacles) {
 		var s = obstacles[i];
 
 		// If this isn't one of the four outer walls then add its vertices to the points to test
 		if (!s.immovable) {
 			var vertices = s.body.GetFixtureList().GetShape().GetVertices();
-			for (i in vertices) {
+			for (var i in vertices) {
 				// Don't actually add the vertex itself
 				// Instead cast a ray slightly above and slightly below the vertex
 				var vertex = s.body.GetWorldPoint(vertices[i]);
-				var pos = this.body.GetPosition();
 				var angle = Math.atan2(pos.y - vertex.y, pos.x - vertex.x);
 				var upVertex = new b2Vec2(pos.x - Math.cos(angle + 0.0001), pos.y - Math.sin(angle + 0.0001));
 				pointsToTest.push(upVertex);
@@ -235,7 +240,7 @@ Tank.prototype.lineOfSight = function(obstacles) {
 	}
 
 	// Add the corners
-	for (i in corners) {
+	for (var i in corners) {
 		pointsToTest.push(corners[i]);
 	}
 
@@ -247,7 +252,7 @@ Tank.prototype.lineOfSight = function(obstacles) {
 		return angleA - angleB;
 	});
 
-	for (i in pointsToTest) {
+	for (var i in pointsToTest) {
 		var input = new b2RayCastInput();
 		input.p1 = this.body.GetPosition();
 		input.p2 = pointsToTest[i];

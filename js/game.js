@@ -13,6 +13,9 @@ var curID = 0;
 // Holds how many people are on each team
 var teams = [0, 0];
 
+// Scores for each team
+var scores = [0, 0];
+
 // Try to update at 80 frames per second (gets about 75 in practice)
 var updateTime = 1000 / 80;
 var lastTime = 0;
@@ -23,40 +26,71 @@ var gameHeight = 50;
 
 var spawns = [];
 
+var setup = false;
+
 // Set up the physics world
-function setupWorld() {
-	//                               v No gravity
+function setupWorld(map) {
 	world = new b2World(new b2Vec2(0, 0), true);
 
-	// Add obstacles here
-	var numObstacles = randInt(3, 9);
-	for (i = 0; i < numObstacles; i++) {
-		addObstacle(randInt(5, gameWidth - 5), randInt(5, gameHeight - 5), randInt(0, 359) * toRadians, randInt(1, 4), randInt(1, 4));
+	var dimensions = map[0].split(" ");
+	gameWidth = parseFloat(dimensions[0]);
+	gameHeight = parseFloat(dimensions[1]);
+
+	var greenSpawn = map[2].split(" ");
+	var brownSpawn = map[3].split(" ");
+
+	spawns[0] = new b2Vec2(parseFloat(greenSpawn[0]), parseFloat(greenSpawn[1]));
+	spawns[1] = new b2Vec2(parseFloat(brownSpawn[0]), parseFloat(brownSpawn[1]));
+
+	for (i = 5; i < map.length; i++) {
+		var line = map[i].split(" ");
+		console.log(line);
+		console.log(line.length);
+		if (line.length === 5) {
+			console.log(line);
+			var pos = new b2Vec2(parseFloat(line[0]), parseFloat(line[1]));
+			var dim = new b2Vec2(parseFloat(line[2]) / 2, parseFloat(line[3]) / 2);
+			var angle = parseFloat(line[4]);
+
+			addObstacle(pos.x, pos.y, angle * toRadians, dim.x, dim.y);
+		}
 	}
 
-	spawns[0] = new b2Vec2(5, 5);
-	spawns[1] = new b2Vec2(gameWidth - 5, gameHeight - 5);
+	console.log("Setup");
+
+	// Add obstacles here
+	// var numObstacles = randInt(7, 9);
+	// for (i = 0; i < numObstacles; i++) {
+	// 	addObstacle(randInt(5, gameWidth - 5), randInt(5, gameHeight - 5), randInt(0, 359) * toRadians, randInt(1, 4), randInt(1, 4));
+	// }
+	//
+	// spawns[0] = new b2Vec2(5, 5);
+	// spawns[1] = new b2Vec2(gameWidth - 5, gameHeight - 5);
 
 	// The four outer walls
 	addObstacle(gameWidth / 2, 0, 0, gameWidth / 2, 0.01, true);
 	addObstacle(gameWidth / 2, gameHeight, 0, gameWidth / 2, 0.01, true);
 	addObstacle(0, gameHeight / 2, 0, 0.01, gameHeight / 2, true);
 	addObstacle(gameWidth, gameHeight / 2, 0, 0.01, gameHeight / 2, true);
+
+	setup = true;
 }
 
 function tick() {
-	var now = Date.now();
-	var delta = now - lastTime;
-	// Make sure it is not updating faster than 80 fps
-	if (delta > updateTime) {
-		update();
-		lastTime = now - (delta % updateTime);
+	if (setup) {
+		var now = Date.now();
+		var delta = now - lastTime;
+		// Make sure it is not updating faster than 80 fps
+		if (delta > updateTime) {
+			update();
+			lastTime = now - (delta % updateTime);
+		}
 	}
 }
 
 function update() {
 	// Update the physics
-	world.Step(1 / 80, 10, 10);
+	world.Step(1 / 80, 5, 5);
 
 	for (var id in sprites) {
 		var sprite = sprites[id];
@@ -77,7 +111,6 @@ function collectGarbage() {
 		world.DestroyBody(markedToDestroy[i].body);
 		console.log("Destroyed 1 body");
 		var s = markedToDestroy[i];
-		if (s instanceof Tank) teams[s.team]--;
 		delete sprites[s.id];
 		console.log("Destroyed 1 sprite");
 		// Tell all clients to destroy this sprite too
@@ -90,6 +123,7 @@ function collectGarbage() {
 // Add an obstacle to the world
 function addObstacle(x, y, angle, width, height, immovable) {
 	curID++;
+	console.log("Adding obstacle with width: " + width);
 	var obstacle = new Obstacle("", world, x, y, angle, width, height, curID);
 	if (immovable) obstacle.setImmovable();
 	io.sockets.emit('newobstacle', {pos: new b2Vec2(x, y), angle: angle, width: width, height: height, immovable: immovable, id: curID});
@@ -137,9 +171,13 @@ function newConnection(socket) {
 
 	// Put them on a team
 	var team = teams[0] > teams[1] ? 1 : 0;
-	var spawn = spawns[team]
+	var spawn = spawns[team];
 	// Tell all clients to make a new tank (including the new user)
 	addTank(spawn.x, spawn.y, 0, team, socket.id);
+}
+
+function sendScore() {
+	io.sockets.emit('score', scores);
 }
 
 function randInt(min, max) {
@@ -151,6 +189,7 @@ module.exports.keysDown = keysDown;
 
 module.exports.sprites = sprites;
 module.exports.teams = teams;
+module.exports.scores = scores;
 
 module.exports.setupWorld = setupWorld;
 module.exports.tick = tick;
@@ -158,3 +197,4 @@ module.exports.newConnection = newConnection;
 module.exports.addBullet = addBullet;
 module.exports.addTank = addTank;
 module.exports.addObstacle = addObstacle;
+module.exports.sendScore = sendScore;
