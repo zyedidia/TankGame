@@ -112,7 +112,7 @@ function render() {
 	ctx.strokeStyle = "black";
 	ctx.strokeRect(0, 0, gameWidth * scale, gameHeight * scale);
 
-	for (i in sprites) {
+	for (var i in sprites) {
 		var s = sprites[i];
 
 		s.draw();
@@ -205,12 +205,19 @@ function saveMap() {
 		mapName = "map.txt";
 	}
 
-	var data = new FormData();
-	data.append("data", outputString);
-	data.append("filename", mapName);
-	var xhr = new XMLHttpRequest();
-	xhr.open('post', './write.php', true);
-	xhr.send(data);
+	console.log(mapName);
+
+	var file = new Blob([outputString], {
+		type: "text/plain;charset=utf-8;",
+	});
+	saveAs(file, mapName);
+
+	// var data = new FormData();
+	// data.append("data", outputString);
+	// data.append("filename", mapName);
+	// var xhr = new XMLHttpRequest();
+	// xhr.open('post', './write.php', true);
+	// xhr.send(data);
 }
 
 canvas.addEventListener('mousedown', function(evt) {
